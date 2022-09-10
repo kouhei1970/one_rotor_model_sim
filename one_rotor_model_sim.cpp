@@ -27,7 +27,7 @@ const double Km = 3.3e-3;//Torque constant[Nm/A]
 const double Jm = 8.1e-6;//Moment of inertia[kg m^2]
 const double Cq = 3.0e-8;//Cofficient of torque (Propeller)
 const double Dm = 0.0;   //Cofficient of viscous damping [Nm s]
-const double Ct = 3.5e-6;//Cofficient thrust[N]
+const double Ct = 3.5e-6;//Cofficient thrust[N]3.5e-6
 const double Md = 0.35;//Mass of drone
 const double Grav = 9.80665; //Accelaration of gravity[m/s^2]
 const double End_time = 20.0;//Time [s]
@@ -149,6 +149,7 @@ void drone_sim(void)
   //state init
   motor.omega = 0.5*sqrt(Md*Grav/Ct);
   double u_trim = Rm*((Dm + Km*Km/Rm)*motor.omega + Cq*motor.omega*motor.omega)/Km;
+  //u_trim = u_trim + 0.01*u_trim;
   motor.u = u_trim;
   drone.w = 0.0;
   drone.z = 0.0;
@@ -163,7 +164,9 @@ void drone_sim(void)
   uint8_t flag = 1;
 
   //PID parameter setup
-  alt_pid.set_parameter(0.00005, 10.0, 2.0, 0.02, h);
+  //PIDゲインの調整はここで行う
+  //前から比例ゲイン，積分時間，微分時間，フィルタ時定数，制御周期
+  alt_pid.set_parameter(0.0001, 10.0, 2.0, 0.02, h);
 
   //PID Gain print
   alt_pid.printGain();
@@ -181,7 +184,7 @@ void drone_sim(void)
     { 
       if(flag ==1){
         err = zref - (int)(drone.z*1000.0);
-        motor.u = alt_pid.update(err) + u_trim;
+        motor.u = alt_pid.update(err) + u_trim;//+0.01;
         if (motor.u > 7.4) motor.u = 7.4;
         else if (motor.u < 0.0) motor.u = 0.0;
       }
