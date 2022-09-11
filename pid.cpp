@@ -25,6 +25,7 @@ void PID::set_parameter(
   m_td=td;
   m_filter_time_constant=filter_time_constant;
   m_h=h;
+  //reset();
 }
 
 void PID::reset(void)

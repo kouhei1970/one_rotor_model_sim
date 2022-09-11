@@ -15,6 +15,9 @@
 
 #define RADPS2RPM (60.0/2.0/3.14159)
 
+//以下の行のコメントを外すことで速度制御が加わる
+//#define WITH_VELOCITY_CONTROL
+
 enum 
 {
   RIGHT,
@@ -46,7 +49,9 @@ typedef struct
 typedef struct
 {
   double w;
-  double z; 
+  double z;
+  double w_ref;
+  double z_ref;
   double w_;
   double z_; 
 } drone_t;
@@ -127,13 +132,24 @@ void save_state(motor_t* motor, drone_t* drone)
 
 void print_state(double t, motor_t* motor, drone_t drone)
 {
-  printf("%11.8f %11.8f %11.8f %11.8f %11.8f\n",
+  #ifdef WITH_VELOCITY_CONTROL
+    printf("%11.8f %11.8f %11.8f %11.8f %11.8f %11.8f\n",
+      t, 
+      motor->u,
+      motor->omega,
+      drone.w,
+      drone.z,
+      drone.w_ref
+    );
+  #else
+    printf("%11.8f %11.8f %11.8f %11.8f %11.8f\n",
     t, 
     motor->u,
     motor->omega,
     drone.w,
     drone.z
   );
+  #endif
 }
 
 //
@@ -144,6 +160,7 @@ void drone_sim(void)
   drone_t drone;
   motor_t motor;
   PID alt_pid;
+  PID w_pid;
   
 
   //state init
@@ -153,12 +170,13 @@ void drone_sim(void)
   motor.u = u_trim;
   drone.w = 0.0;
   drone.z = 0.0;
+  drone.w_ref = 0.0;
   
   double t       = 0.0; //time
   double step    = 0.0001;//step size
   double h = 0.02; //control period
   double zref = 500.0;//(mm)
-  double err;
+  double alt_err, w_err, w_ref;
   double next_control_time =0.0;
 
   uint8_t flag = 1;
@@ -166,10 +184,18 @@ void drone_sim(void)
   //PID parameter setup
   //PIDゲインの調整はここで行う
   //前から比例ゲイン，積分時間，微分時間，フィルタ時定数，制御周期
-  alt_pid.set_parameter(0.0001, 10.0, 2.0, 0.02, h);
-
+  #ifdef WITH_VELOCITY_CONTROL
+    alt_pid.set_parameter(0.002, 100.0, 0.01, 0.01, h);
+    w_pid.set_parameter(1.0, 1.0, 0.0000, 0.01, h);
+    alt_pid.reset();
+    w_pid.reset();
+  #else
+    alt_pid.set_parameter(0.0001, 1.0, 2.0, 0.01, h);
+    alt_pid.reset();
+  #endif
   //PID Gain print
   alt_pid.printGain();
+  w_pid.printGain();
 
   //initial state output
   print_state(t, &motor, drone);
@@ -182,12 +208,23 @@ void drone_sim(void)
     if (drone.z*1000.0>zref)flag =1;
     if(t>next_control_time)
     { 
-      if(flag ==1){
-        err = zref - (int)(drone.z*1000.0);
-        motor.u = alt_pid.update(err) + u_trim;//+0.01;
-        if (motor.u > 7.4) motor.u = 7.4;
-        else if (motor.u < 0.0) motor.u = 0.0;
-      }
+      #ifdef WITH_VELOCITY_CONTROL
+        if(flag ==1){
+          alt_err = zref - (int)(drone.z*1000.0);
+          drone.w_ref = alt_pid.update(alt_err);
+          w_err = drone.w_ref - drone.w;
+          motor.u = w_pid.update(w_err) + u_trim*0.95;
+          if (motor.u > 7.4) motor.u = 7.4;
+          else if (motor.u < 0.0) motor.u = 0.0;
+        }
+      #else
+        if(flag ==1){
+          alt_err = zref - (int)(drone.z*1000.0);
+          motor.u = alt_pid.update(alt_err) + u_trim*0.95;
+          if (motor.u > 7.4) motor.u = 7.4;
+          else if (motor.u < 0.0) motor.u = 0.0;
+        }
+      #endif
       next_control_time = next_control_time + h;
 
     }

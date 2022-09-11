@@ -1,17 +1,25 @@
 reset
+set terminal qt font "Arial,16"
 
 set grid
 set xrange [0:20]
-set xlabel 'Time[s]'
 set multiplot layout 3,1
 set ylabel '[V]'
-plot "log/data00.log" u 1:2 w l title "u"
+set yrange[0:8]
+unset xlabel
+set ytics 2
+plot "log/data00.log" u 1:2 w l lw 2 title "u"
 
+unset xlabel
+unset yrange
 set ylabel '[m/s]'
-plot "log/data00.log" u 1:4 w l title "w"
+set ytics 0.5
+plot "log/data00.log" u 1:4 w l lw 2 title "w", "" u 1:6 w l lw 2 title "w\\_ref"
 
+set xlabel 'Time[s]'
 set ylabel '[m]'
-plot "log/data00.log" u 1:5 w l title "z"
+set ytics 0.25
+plot "log/data00.log" u 1:5 w l lw 2 title "z"
 
 unset multiplot
 
