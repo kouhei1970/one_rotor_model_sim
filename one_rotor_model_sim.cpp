@@ -18,12 +18,6 @@
 //以下の行のコメントを外すことで速度制御が加わる
 //#define WITH_VELOCITY_CONTROL
 
-enum 
-{
-  RIGHT,
-  LEFT
-};
-
 //定数ノミナル
 const double Rm = 1.2e-1;//Resistance[Ohm]
 const double Km = 3.3e-3;//Torque constant[Nm/A]
