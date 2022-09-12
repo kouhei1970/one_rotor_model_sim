@@ -203,11 +203,12 @@ void drone_sim(void)
     if(t>next_control_time)
     { 
       #ifdef WITH_VELOCITY_CONTROL
-        if(flag ==1){
+        if(flag ==1)
+        {
           alt_err = zref - (int)(drone.z*1000.0);
           drone.w_ref = alt_pid.update(alt_err);
           w_err = drone.w_ref - drone.w;
-          motor.u = w_pid.update(w_err) + u_trim*0.95;
+          motor.u = w_pid.update(w_err) + u_trim*1.00;
           if (motor.u > 7.4) motor.u = 7.4;
           else if (motor.u < 0.0) motor.u = 0.0;
         }
