@@ -11,6 +11,10 @@
 #include <stdarg.h> //可変長引数関数を使うために必要
 #include <math.h>
 #include <time.h>
+#include "drone.hpp"
+#include "airframe.hpp"
+#include "motor.hpp"
+#include "propeller.hpp"
 #include "pid.hpp"
 
 #define RADPS2RPM (60.0/2.0/3.14159)
@@ -18,6 +22,7 @@
 //以下の行のコメントを外すことで速度制御が加わる
 //#define WITH_VELOCITY_CONTROL
 
+/*
 //定数ノミナル
 const double Rm = 1.2e-1;//Resistance[Ohm]
 const double Km = 3.3e-3;//Torque constant[Nm/A]
@@ -27,9 +32,11 @@ const double Dm = 0.0;   //Cofficient of viscous damping [Nm s]
 const double Ct = 3.5e-6;//Cofficient thrust[N]3.5e-6
 const double Md = 0.35;//Mass of drone
 const double Grav = 9.80665; //Accelaration of gravity[m/s^2]
+*/
 const double End_time = 20.0;//Time [s]
 long cpu_time;
 
+/*
 //モータ状態構造体
 typedef struct 
 {
@@ -115,7 +122,7 @@ double rk4(double (*dxdt)(double, double, double*), double x, double t, double h
   
   return x+(k1 + k2*2.0 + k3*2.0 + k4)/6;
 }
-
+*/
 void save_state(motor_t* motor, drone_t* drone)
 {
   motor->omega_ = motor->omega;
@@ -151,8 +158,8 @@ void print_state(double t, motor_t* motor, drone_t drone)
 //
 void drone_sim(void)
 {
-  drone_t drone;
-  motor_t motor;
+  Multicopter drone;
+  Motore motor;
   PID alt_pid;
   PID w_pid;
   
