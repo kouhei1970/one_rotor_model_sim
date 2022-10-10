@@ -17,19 +17,19 @@
 #define RADPS2RPM (60.0/2.0/3.14159)
 
 //以下の行のコメントを外すことで速度制御が加わる
-//#define WITH_VELOCITY_CONTROL
+#define WITH_VELOCITY_CONTROL
 
 //kalman filter
 Alt_kalman kalman;
 
 //定数ノミナル
-const double Rm = 1.2e-1;//Resistance[Ohm]
-const double Km = 3.3e-3;//Torque constant[Nm/A]
-const double Jm = 8.1e-6;//Moment of inertia[kg m^2]
+const double Rm = 5.8e-1;//Resistance[Ohm]
+const double Km = 2.8e-3;//Torque constant[Nm/A]
+const double Jm = 8.1e-7;//Moment of inertia[kg m^2]
 const double Cq = 3.0e-8;//Cofficient of torque (Propeller)
 const double Dm = 0.0;   //Cofficient of viscous damping [Nm s]
-const double Ct = 3.5e-6;//Cofficient thrust[N]3.5e-6
-const double Md = 0.35;//Mass of drone
+const double Ct = 2.04e-7;//Cofficient thrust[N]3.5e-6
+const double Md = 0.037;//Mass of drone
 const double Grav = 9.80665; //Accelaration of gravity[m/s^2]
 const double End_time = 20.0;//Time [s]
 long cpu_time;
@@ -128,16 +128,19 @@ void save_state(motor_t* motor, drone_t* drone)
   drone->z_ = drone->z;
 }
 
-void print_state(double t, motor_t* motor, drone_t drone)
+void print_state(double t, motor_t* motor, drone_t drone, Alt_kalman kalman)
 {
   #ifdef WITH_VELOCITY_CONTROL
-    printf("%11.8f %11.8f %11.8f %11.8f %11.8f %11.8f\n",
+    printf("%11.8f %11.8f %11.8f %11.8f %11.8f %11.8f %11.8f\n",
       t, 
       motor->u,
       motor->omega,
       drone.w,
       drone.z,
-      drone.w_ref
+      drone.w_ref,
+      kalman.Velocity
+      
+
     );
   #else
     printf("%11.8f %11.8f %11.8f %11.8f %11.8f\n",
@@ -172,8 +175,8 @@ void drone_sim(void)
   
   double t       = 0.0; //time
   double step    = 0.0001;//step size
-  double h = 0.02; //control period
-  double zref = 1000.0;//(mm)
+  double h = 0.05; //control period
+  double zref = 200.0;//(mm)
   double alt_err, w_err, w_ref;
   double next_control_time =0.0;
 
@@ -184,7 +187,7 @@ void drone_sim(void)
   //前から比例ゲイン，積分時間，微分時間，フィルタ時定数，制御周期
   #ifdef WITH_VELOCITY_CONTROL
     alt_pid.set_parameter(0.002, 100.0, 0.01, 0.01, h);
-    w_pid.set_parameter(1.0, 1.0, 0.0000, 0.01, h);
+    w_pid.set_parameter(1.0, 0.5, 0.1, 0.01, h);
     alt_pid.reset();
     w_pid.reset();
   #else
@@ -196,7 +199,7 @@ void drone_sim(void)
   w_pid.printGain();
 
   //initial state output
-  print_state(t, &motor, drone);
+  print_state(t, &motor, drone, kalman);
   
   //Simulation loop
   cpu_time = clock();
@@ -210,13 +213,13 @@ void drone_sim(void)
         if(flag ==1)
         {
           double true_accel = w_dot(drone.w, t, &(motor.omega));
-          double accel_sens = true_accel + 0.01 + 0.1*((double)(rand()-RAND_MAX/2)/(RAND_MAX/2));
-          int alt_sense =(int)(drone.z*1000.0)  + 10.0*((double)(rand()-RAND_MAX/2)/(RAND_MAX/2));;
+          double accel_sens = true_accel+ 0.1*((double)(rand()-RAND_MAX/2)/(RAND_MAX/2));
+          int alt_sense =(int)(drone.z*1000.0)+ 10.0*((double)(rand()-RAND_MAX/2)/(RAND_MAX/2));;
           kalman.update((double)alt_sense/1000, accel_sens);
           alt_err = zref - alt_sense;//kalman.Altitude*1000;
           drone.w_ref = alt_pid.update(alt_err);
           w_err = drone.w_ref - kalman.Velocity;
-          motor.u = w_pid.update(w_err) + u_trim*1.00;
+          motor.u = w_pid.update(w_err) + u_trim*1.0;
           if (motor.u > 7.4) motor.u = 7.4;
           else if (motor.u < 0.0) motor.u = 0.0;
         }
@@ -243,7 +246,7 @@ void drone_sim(void)
     t = t + step;
     
     //Output
-    print_state(t, &motor, drone);
+    print_state(t, &motor, drone, kalman);
   }
   cpu_time = clock() -cpu_time;
   printf("#elapsed time %f\n", (double)cpu_time/CLOCKS_PER_SEC);
